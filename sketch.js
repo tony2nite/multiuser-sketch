@@ -18,8 +18,11 @@ function handler (req, res) {
 }
 
 var users = [];
+var clients = {};
+var picture = [];
 
 io.sockets.on('connection', function (socket) {
+	clients[socket.id] = socket;
 
 	socket.on('set nickname', function (newname) {
 		socket.get('nickname', function(err, name){
@@ -32,16 +35,21 @@ io.sockets.on('connection', function (socket) {
 	socket.emit('userlist', users);
 	name = 'user_'+Math.floor(Math.random()*101);
 	users.push(name);
+
+
+
 	socket.set('nickname', name);
 	socket.emit('user', {userid: name});
 	io.sockets.emit('user connected', {userid: name});
 	
 	socket.on('position', function(data){
 		socket.broadcast.emit('position', data);
+		picture.push({'action' : 'position', 'data' : data});	// storing every single mouse position which is a bit inefficient
 	});
 	
 	socket.on('draw', function(data){
 		socket.broadcast.emit('draw', data);
+		picture.push({'action' : 'draw', 'data' : data});
 	});	
 	
 	socket.on('mousedown', function(data){
@@ -59,5 +67,14 @@ io.sockets.on('connection', function (socket) {
     		io.sockets.emit('user disconnected', {userid: name});			
 		});
   	});
-		
+	
+
+
+	var i = picture.length;
+	while(i--)
+	{
+		var p = picture[i];
+	  	socket.emit(p.action, p.data);
+	}		
+
 });
